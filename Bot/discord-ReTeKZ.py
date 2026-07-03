@@ -1,8 +1,19 @@
 import discord
 from time import sleep
 from sms import SendSms
+import os
+import datetime
 
 TOKEN = ""
+
+# LOG klasörünü oluştur (BOT klasörü içinde)
+LOG_DIZINI = "LOGS"
+if not os.path.exists(LOG_DIZINI):
+    os.makedirs(LOG_DIZINI)
+
+def log_yaz(kullanici, telno, adet):
+    with open(f"{LOG_DIZINI}/sms_log.txt", "a", encoding="utf-8") as f:
+        f.write(f"{datetime.datetime.now()} | Kullanıcı: {kullanici} | Telefon: {telno} | SMS: {adet}\n")
 
 gif = "https://media.tenor.com/SWiGXYOM8eMAAAAC/russia-soviet.gif"
 adet = 52
@@ -38,11 +49,21 @@ async def on_message(message):
                                 break
                             exec("sms."+attribute+"()")
                             sleep(saniye)
-            await message.channel.send(telno+" --> "+str(sms.adet)+f" adet SMS gönderildi.\n{message.author.mention}")                        
+            await message.channel.send(telno+" --> "+str(sms.adet)+f" adet SMS gönderildi.\n{message.author.mention}")
+            log_yaz(message.author.name, telno, sms.adet)
         else:
             await message.channel.send(f"Geçerli komut yazınız!\nYardım için ' *help ' yazınız.\n{message.author.mention}")
     elif "*help" == message.content:
         await message.channel.send(f"Sms göndermek için komutu aşağıdaki gibi yazınız.\n```*sms 5051234567```\n*sms (telefon numarası)\n{message.author.mention}")
+    elif message.content.startswith('!log'):
+        try:
+            with open(f"{LOG_DIZINI}/sms_log.txt", "r", encoding="utf-8") as f:
+                loglar = f.read().splitlines()
+            son_loglar = loglar[-20:] if len(loglar) > 20 else loglar
+            log_text = "\n".join(son_loglar)
+            await message.channel.send(f"📋 **Son 20 Kayıt:**\n```\n{log_text}\n```")
+        except FileNotFoundError:
+            await message.channel.send("Henüz kayıt yok.")
     else:
         pass
   
