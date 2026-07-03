@@ -2,8 +2,19 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from sms import SendSms
 from time import sleep
+import os
+import datetime
 
 TOKEN = ""
+
+# LOG klasörünü oluştur (BOT klasörü içinde)
+LOG_DIZINI = "LOGS"
+if not os.path.exists(LOG_DIZINI):
+    os.makedirs(LOG_DIZINI)
+
+def log_yaz(kullanici, telno, adet):
+    with open(f"{LOG_DIZINI}/sms_log.txt", "a", encoding="utf-8") as f:
+        f.write(f"{datetime.datetime.now()} | Kullanıcı: {kullanici} | Telefon: {telno} | SMS: {adet}\n")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(f"Merhaba\!\nBirilerini rahatsız etmek istiyorsan doğru yere geldin\.\n*_/help_* yazarak komutları görebilirsin\.\nİyi eğlenceler\!\n\n[_Kaynak Kodu_](https://github.com/adimxz/ReTeKZ/)\n[_Twitter_](https://twitter.com/_2ENZ1PF6Y)", parse_mode='MarkdownV2')
@@ -30,7 +41,8 @@ async def sms(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                 break
                             exec("sms."+attribute+"()")
                             sleep(saniye)
-            await update.message.reply_text(f"*{telno} \-\-\> {sms.adet} adet SMS gönderildi\.*", parse_mode='MarkdownV2')                        
+            await update.message.reply_text(f"*{telno} \-\-\> {sms.adet} adet SMS gönderildi\.*", parse_mode='MarkdownV2')
+            log_yaz(update.effective_user.username or update.effective_user.first_name, telno, sms.adet)
         else:
             await update.message.reply_text(f"Geçerli komut yazınız\!\nYardım için *_/help_* yazınız\.", parse_mode='MarkdownV2')
     else:
@@ -49,6 +61,16 @@ async def ayarla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("Ayarlar kaydedildi.")
     else:
         await update.message.reply_text(f"Geçerli komut yazınız\!\nYardım için *_/help_* yazınız\.", parse_mode='MarkdownV2')
+
+async def log(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        with open(f"{LOG_DIZINI}/sms_log.txt", "r", encoding="utf-8") as f:
+            loglar = f.read().splitlines()
+        son_loglar = loglar[-20:] if len(loglar) > 20 else loglar
+        log_text = "\n".join(son_loglar)
+        await update.message.reply_text(f"📋 *Son 20 Kayıt:*\n```\n{log_text}\n```", parse_mode='MarkdownV2')
+    except FileNotFoundError:
+        await update.message.reply_text("Henüz kayıt yok.")
     
 def main() -> None:
     application = Application.builder().token(TOKEN).build()
@@ -57,6 +79,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("sms", sms))
     application.add_handler(CommandHandler("config", ayarla))
+    application.add_handler(CommandHandler("log", log))
     application.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, ne))
 
     application.run_polling()
